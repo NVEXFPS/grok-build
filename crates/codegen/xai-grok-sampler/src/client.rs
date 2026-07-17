@@ -1662,6 +1662,21 @@ impl SamplingClient {
             request.max_output_tokens = self.defaults.max_completion_tokens;
         }
 
+        // DeepSeek /v1/chat/completions is text-only. Multimodal history
+        // (COFC screenshots, etc.) becomes `image_url` content blocks and
+        // 400s with: unknown variant `image_url`, expected `text`.
+        // Strip before first attempt so UI work sessions stay usable.
+        if self.base_url.contains("deepseek.com") {
+            let stripped = request.strip_images();
+            if stripped > 0 {
+                tracing::info!(
+                    stripped,
+                    base_url = %self.base_url,
+                    "stripped image content parts for text-only DeepSeek API"
+                );
+            }
+        }
+
         Ok(())
     }
 

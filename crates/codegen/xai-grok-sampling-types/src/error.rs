@@ -227,16 +227,23 @@ impl SamplingError {
     /// The API rejected the request because an inline image could not be
     /// processed. Matches both direct 400 and proxy-wrapped 500 responses.
     /// Exact-case match — consistent with `is_encrypted_content_error`.
+    ///
+    /// Also matches text-only providers (e.g. DeepSeek chat/completions) that
+    /// reject multimodal `image_url` content parts with deserialize errors.
     pub fn is_image_processing_error(&self) -> bool {
         matches!(
-                    self,
-                    SamplingError::Api {
-                        status,
-                        message,
-                        ..
-                    }
-        if matches!(status.as_u16(), 400 | 500) && message.contains("Could not process image")
-                )
+            self,
+            SamplingError::Api {
+                status,
+                message,
+                ..
+            } if matches!(status.as_u16(), 400 | 500)
+                && (message.contains("Could not process image")
+                    || message.contains("unknown variant `image_url`")
+                    || (message.contains("image_url")
+                        && message.contains("expected")
+                        && message.contains("text")))
+        )
     }
 
     pub fn is_retryable(&self) -> bool {
